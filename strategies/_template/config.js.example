@@ -1,0 +1,82 @@
+import { t } from '../kit.js';
+
+/**
+ * Everything the strategy decides with lives in `rules`. The model reads it;
+ * copy that quotes a rule is written as a function of it, so changing a number
+ * here changes every place the page shows it.
+ *
+ * Thresholds are data too — { op: '>' | '>=' | '<' | '<=', value } — so
+ * whether a rule is strict or inclusive is written down, not buried in an if.
+ */
+const rules = {
+  underlying: 'QQQ',
+  allocation: { stockPercent: 80, cashPercent: 20 },
+  entry: { drop: { op: '>=', value: 2 } },
+  sizing: { perTradePercent: 5 },
+};
+
+export default {
+  id: 'my-strategy',
+  name: t('My Strategy', '我的策略'),
+  shortName: t('My Strategy', '我的策略'), // shown in the strategy picker
+  description: t('Explain the strategy in one sentence.', '用一句话解释这个策略。'),
+  // source: { label: t('Source', '来源'), url: 'https://…' },   // optional link
+
+  rules,
+
+  // Each group becomes a numbered step holding that group's controls.
+  // `columns` is the desktop grid width (1–4).
+  groups: [
+    { id: 'account', title: t('Your account', '你的账户'), columns: 3 },
+    {
+      id: 'market',
+      title: t('Today’s market', '今日行情'),
+      description: (r) => t(`Buy when ${r.underlying} drops ${r.entry.drop.value}%`, `${r.underlying} 下跌 ${r.entry.drop.value}% 时买入`),
+      columns: 3,
+    },
+  ],
+
+  // 'group:<id>' opens a step; outputs after it appear inside that step.
+  // Outputs: allocations · flow · decision · decision:<laneId> · risk · formulas
+  layout: ['group:account', 'allocations', 'group:market', 'decision', 'risk', 'formulas'],
+
+  inputs: [
+    {
+      id: 'portfolioValue',
+      kind: 'currency', // currency | range | toggle | choice
+      group: 'account',
+      label: t('Account value', '账户总额'),
+      min: 10000,
+      max: 10000000,
+      step: 1000,
+    },
+    {
+      id: 'move',
+      kind: 'range',
+      group: 'market',
+      label: (r) => t(`${r.underlying} move today`, `${r.underlying} 今日涨跌`),
+      min: -5,
+      max: 5,
+      step: 0.1,
+      suffix: '%',
+      // visibleWhen: (values) => values.someToggle === true,
+    },
+  ],
+
+  defaults: { portfolioValue: 100000, move: 0 },
+
+  // Loaded by a rule's "Try this case" button (rule.preset = key).
+  presets: {
+    buy: { move: -2.5 },
+    wait: { move: 0.5 },
+  },
+
+  // Titled lists shown at the end of the risk panel.
+  notes: [
+    {
+      id: 'downside',
+      title: t('Know the downside', '了解下行风险'),
+      items: [{ title: t('State a real risk', '写明真实风险'), detail: t('In one sentence.', '一句话说明。') }],
+    },
+  ],
+};

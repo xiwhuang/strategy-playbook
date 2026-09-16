@@ -1,0 +1,14 @@
+{
+  "name": "strategy-playbook",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A bilingual, config-driven playbook of portfolio and options strategies.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "serve": "python -m http.server 8777"
+  }
+}

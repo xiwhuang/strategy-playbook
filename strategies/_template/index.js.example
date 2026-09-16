@@ -1,0 +1,7 @@
+// Rename this folder (e.g. strategies/my-strategy/), drop the .example suffix
+// from all three files, then add the export to strategies/registry.js.
+import { defineStrategy } from '../kit.js';
+import config from './config.js';
+import { evaluate } from './model.js';
+
+export const myStrategy = defineStrategy(config, evaluate);

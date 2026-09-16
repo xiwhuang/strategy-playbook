@@ -1,0 +1,105 @@
+import { clamp, describe, moveToday, passes, share, t } from '../kit.js';
+
+/**
+ * evaluate(values, config) → what the page shows. Read every number from
+ * `config.rules`; never hard-code a threshold here.
+ *
+ * Required: metrics.total and allocations (percents total 100, each bucket's
+ * items total the bucket amount). Everything else is optional and a section
+ * with no data is simply not shown. `npm test` checks the contract for the
+ * defaults and for every preset.
+ */
+export function evaluate(values, config) {
+  const r = config.rules;
+
+  // Clamp first: values can arrive from a hand-edited share link.
+  const total = clamp(values.portfolioValue, 10000, 10000000);
+  const move = clamp(values.move, -20, 20);
+
+  const signal = passes(-move, r.entry.drop);
+  const entryText = describe(`${r.underlying} drop`, r.entry.drop, '%');
+  const tradeSize = share(total, r.sizing.perTradePercent);
+
+  return {
+    metrics: { total, signal, tradeSize },
+
+    allocations: [
+      {
+        id: 'stock',
+        label: t('Shares', '正股'),
+        description: t('The long-term core', '长期核心仓位'),
+        percent: r.allocation.stockPercent,
+        amount: share(total, r.allocation.stockPercent),
+        tone: 'core', // core | options | cash — picks the colour
+        items: [],
+        // rule:    { label: t(…), amount }                 a highlighted figure
+        // meter:   { label, current, target, status, shortfall, shortfallLabel }
+        // callout: t(…)                                    a short tinted note
+        risk: t('Shares fall with the market.', '正股会随市场下跌。'),
+      },
+      {
+        id: 'cash',
+        label: t('Cash', '现金'),
+        description: t('Dry powder for entries', '用于建仓的备用资金'),
+        percent: r.allocation.cashPercent,
+        amount: share(total, r.allocation.cashPercent),
+        tone: 'cash',
+        items: [],
+      },
+    ],
+
+    // A decision lane: rules with a status, plus what the plan does next.
+    // status: active | blocked | waiting | covered | idle
+    // tone:   profit | time | dip | stop | hold
+    decision: {
+      lanes: [
+        {
+          id: 'entry',
+          title: t('Entries', '建仓'),
+          summary: moveToday(r.underlying, move),
+          rules: [
+            {
+              id: 'buy',
+              title: t('Buy', '买入'),
+              when: entryText, // a plain string renders as a formula
+              then: t(`Buy ${r.sizing.perTradePercent}% of the account`, `买入账户的 ${r.sizing.perTradePercent}%`),
+              status: signal ? 'active' : 'idle',
+              tone: 'dip',
+              preset: 'buy',
+            },
+            {
+              id: 'wait',
+              title: t('Wait', '等待'),
+              when: t('No signal', '没有信号'),
+              then: t('No trade', '不交易'),
+              status: signal ? 'idle' : 'active',
+              tone: 'hold',
+              preset: 'wait',
+            },
+          ],
+          verdict: signal
+            ? {
+                tone: 'dip',
+                actions: [
+                  {
+                    title: t('Buy', '买入'),
+                    body: t('The entry rule is met.', '满足建仓规则。'),
+                    facts: [{ label: t('Size', '规模'), value: tradeSize, kind: 'money' }],
+                  },
+                ],
+              }
+            : { tone: 'hold', actions: [{ title: t('Wait', '等待'), body: t(`Needs ${entryText}.`, `需要 ${entryText}。`) }] },
+        },
+      ],
+    },
+
+    // Optional: scales with threshold marks, each with a status sentence.
+    gauges: [],
+    // Optional: a waterfall (see age20), drift table, risk tiles.
+    // flow: [], drift: null, risks: [],
+
+    formulas: [{ label: t('Trade size', '单笔规模'), expression: `total × ${r.sizing.perTradePercent}%`, result: tradeSize, kind: 'money' }],
+
+    notes: config.notes,
+  };
+}
