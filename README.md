@@ -4,6 +4,8 @@ A bilingual (EN / 中文) website for exploring portfolio and options strategy
 rules interactively. No build step, no runtime dependencies — it is served as
 plain files by GitHub Pages and works on a phone.
 
+**Live site:** https://xiwhuang.github.io/strategy-playbook/
+
 > Educational illustration only. Nothing here is investment advice.
 
 ## Strategies
