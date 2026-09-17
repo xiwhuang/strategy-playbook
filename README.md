@@ -108,8 +108,8 @@ The page builds itself from the descriptor:
 - each entry in `groups` is a **numbered step** holding that group's controls;
 - `layout` places outputs inside steps: `allocations`, `flow`, `decision`
   (or `decision:<laneId>`), `risk`, `formulas`;
-- a **decision lane** is a set of rules, each with a status (*Triggered*,
-  *On hold*, *Not yet*, *Covered*, *Not triggered*), plus a verdict; a rule
+- a **decision lane** is a set of rules, each with a status (*Applies*,
+  *On hold*, *Not yet*, *Covered*, *Doesn't apply*), plus a verdict; a rule
   with a `preset` gets a *Try this case* button that loads example inputs;
 - **gauges** are scales with threshold marks and a status sentence, so state is
   never shown by colour alone;

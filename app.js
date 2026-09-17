@@ -43,7 +43,7 @@ const UI = {
     en: 'Tap a slice or a name to focus on that bucket.',
     zh: '点击扇区或名称，聚焦对应仓位。',
   },
-  allocationTitle: { en: 'Your allocation', zh: '你的配置' },
+  allocationTitle: { en: 'Target allocation', zh: '目标配置' },
   total: { en: 'Total', zh: '总额' },
   ofPortfolio: { en: 'of portfolio', zh: '占总组合' },
   riskNote: { en: 'Risk note', zh: '风险提示' },
@@ -76,11 +76,11 @@ const UI = {
   planSays: { en: 'What the plan says', zh: '计划的做法' },
   when: { en: 'When', zh: '条件' },
   then: { en: 'Then', zh: '操作' },
-  ruleActive: { en: 'Triggered', zh: '已触发' },
+  ruleActive: { en: 'Applies', zh: '适用' },
   ruleBlocked: { en: 'On hold', zh: '暂缓' },
   ruleWaiting: { en: 'Not yet', zh: '未达到' },
   ruleCovered: { en: 'Covered', zh: '已涵盖' },
-  ruleIdle: { en: 'Not triggered', zh: '未触发' },
+  ruleIdle: { en: 'Doesn’t apply', zh: '不适用' },
   tryCase: { en: 'Try this case', zh: '试试这个情景' },
   presetLoaded: { en: 'Example loaded into the inputs', zh: '示例数值已填入' },
   driftTitle: { en: 'Allocation drift', zh: '配置偏离' },
@@ -540,7 +540,10 @@ function renderLegend(evaluation) {
     </ul>`;
 }
 
-function renderAllocationItem(item) {
+function renderAllocationItem(item, index, items) {
+  const share = items.length > 1
+    ? ` <span class="alloc-item-share num">${escapeHtml(`${number(item.percent, 0)}%`)}</span>`
+    : '';
   const marks = item.segments
     ? `<div class="cap-marks" aria-hidden="true">${Array.from({ length: item.segments }, (_, index) =>
         index < (item.segmentsFilled ?? item.segments) ? '<span></span>' : '<span class="is-empty"></span>',
@@ -549,9 +552,7 @@ function renderAllocationItem(item) {
   return `
     <li class="alloc-item">
       <div class="alloc-item-head">
-        <span class="alloc-item-name">${text(item.label)} <span class="alloc-item-share num">${escapeHtml(
-          `${number(item.percent, 0)}%`,
-        )}</span></span>
+        <span class="alloc-item-name">${text(item.label)}${share}</span>
         <span class="alloc-item-amount num">${escapeHtml(money(item.amount))}</span>
       </div>
       ${marks}
@@ -645,7 +646,7 @@ function renderAllocations(evaluation) {
     ? `<button type="button" class="pill-btn pill-btn--ghost" data-action="clear-focus" data-focus-key="action:clear-focus">${ui('showAll')}</button>`
     : '';
   return `
-    ${outputHead(ui('allocationTitle'), ui('allocationHint'), clear)}
+    ${outputHead(evaluation.allocationTitle ? text(evaluation.allocationTitle) : ui('allocationTitle'), ui('allocationHint'), clear)}
     <p class="sr-only">${escapeHtml(screenReaderSummary(evaluation))}</p>
     <div class="allocation-top">
       ${renderDonut(evaluation)}
@@ -893,9 +894,11 @@ function renderDrift(drift) {
         </tbody>
       </table>
       ${
-        offBy
-          ? `<p class="drift-warning">${ui('driftSum')} ${escapeHtml(`${number(drift.sumPercent, 1)}%`)}. ${ui('driftSumHint')}</p>`
-          : ''
+        drift.warning
+          ? `<p class="drift-warning">${text(drift.warning)}</p>`
+          : offBy
+            ? `<p class="drift-warning">${ui('driftSum')} ${escapeHtml(`${number(drift.sumPercent, 1)}%`)}. ${ui('driftSumHint')}</p>`
+            : ''
       }
     </div>`;
 }

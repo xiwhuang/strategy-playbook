@@ -41,6 +41,23 @@ export function moveToday(ticker, move) {
     : t(`${ticker} is down ${size}% today`, `${ticker} 今日下跌 ${size}%`);
 }
 
+/**
+ * "QQQ down more than 1%" / "QQQ down at least 1%" — a drop threshold in
+ * words, so rule cards read as sentences rather than formulas.
+ */
+export function dropPhrase(ticker, threshold, { negate = false } = {}) {
+  const strict = threshold.op === '>';
+  const value = fmt(threshold.value);
+  if (negate) {
+    return strict
+      ? t(`${ticker} not down more than ${value}%`, `${ticker} 跌幅未超过 ${value}%`)
+      : t(`${ticker} down less than ${value}%`, `${ticker} 跌幅不足 ${value}%`);
+  }
+  return strict
+    ? t(`${ticker} down more than ${value}%`, `${ticker} 跌幅超过 ${value}%`)
+    : t(`${ticker} down at least ${value}%`, `${ticker} 跌幅至少 ${value}%`);
+}
+
 /* ------------------------------------------------------------ thresholds --
  * A threshold is data: { op: '>' | '>=' | '<' | '<=', value }. Whether a rule
  * is strict or inclusive is a decision the source document makes, so it lives

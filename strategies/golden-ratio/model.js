@@ -1,4 +1,4 @@
-import { clamp, describe, fmt, moveToday, passes, share, t, usd } from '../kit.js';
+import { clamp, describe, dropPhrase, fmt, moveToday, passes, share, t, usd } from '../kit.js';
 
 /**
  * Golden Ratio model. Every allocation, size, threshold and ladder tier comes
@@ -35,8 +35,8 @@ export function evaluate(values, config) {
   const deployedAmount = openPositions * slotAmount;
   const waitingAmount = Math.max(0, optionsAmount - deployedAmount);
   const spec = t(
-    `~Δ ${fmt(r.contract.delta)} ${U} calls, ~${r.contract.dte} days out`,
-    `约 Δ ${fmt(r.contract.delta)}、约 ${r.contract.dte} 天到期的 ${U} 看涨期权`,
+    `${U} calls at about ${fmt(r.contract.delta)} delta, about ${r.contract.dte} days to expiry`,
+    `约 ${fmt(r.contract.delta)} Delta、约 ${r.contract.dte} 天到期的 ${U} 看涨期权`,
   );
 
   /* -- entry decision ------------------------------------------------------- */
@@ -44,7 +44,9 @@ export function evaluate(values, config) {
   const signal = passes(drop, r.entry.drop);
   const atLimit = openPositions >= r.sizing.maxPositions;
   const entryAction = !signal ? 'wait' : atLimit ? 'rotate' : 'buy';
-  const entryText = describe(`${U} drop`, r.entry.drop, '%');
+  const entryText = describe(`${U} drop`, r.entry.drop, '%'); // formula form, for the drawer
+  const signalPhrase = dropPhrase(U, r.entry.drop);
+  const noSignalPhrase = dropPhrase(U, r.entry.drop, { negate: true });
   const moveText = moveToday(U, move);
   const slotsAfter = entryAction === 'buy' ? openPositions + 1 : openPositions;
 
@@ -54,7 +56,10 @@ export function evaluate(values, config) {
       actions: [
         {
           title: t('No new contract today', '今天不开新仓'),
-          body: t(`${moveText.en}. A new contract needs ${entryText}.`, `${moveText.zh}。开新仓需要 ${entryText}。`),
+          body: t(
+            `${moveText.en}. A new contract needs ${U} to be ${signalPhrase.en.replace(`${U} `, '')}.`,
+            `${moveText.zh}。开新仓需要${signalPhrase.zh}。`,
+          ),
         },
       ],
     },
@@ -110,7 +115,7 @@ export function evaluate(values, config) {
       {
         id: 'no-signal',
         title: t('Wait', '等待'),
-        when: t(`No ${entryText}`, `未出现 ${entryText}`),
+        when: noSignalPhrase,
         then: t('No trade', '不交易'),
         status: entryAction === 'wait' ? 'active' : 'idle',
         tone: 'hold',
@@ -119,7 +124,7 @@ export function evaluate(values, config) {
       {
         id: 'buy',
         title: t('Buy new', '买入新仓'),
-        when: t(`${entryText}, a slot is free`, `${entryText}，且有空余仓位`),
+        when: t(`${signalPhrase.en}, and a slot is free`, `${signalPhrase.zh}，且有空余仓位`),
         then: t(`Buy 1 contract (${r.sizing.perTradePercent}% of account)`, `买入 1 张（账户的 ${r.sizing.perTradePercent}%）`),
         status: entryAction === 'buy' ? 'active' : 'idle',
         tone: 'dip',
@@ -128,7 +133,10 @@ export function evaluate(values, config) {
       {
         id: 'rotate',
         title: t('FIFO rotation', '先进先出轮换'),
-        when: t(`${entryText}, ${r.sizing.maxPositions} open`, `${entryText}，已持有 ${r.sizing.maxPositions} 张`),
+        when: t(
+          `${signalPhrase.en}, and all ${r.sizing.maxPositions} slots are full`,
+          `${signalPhrase.zh}，且 ${r.sizing.maxPositions} 个仓位已满`,
+        ),
         then: t('Sell the oldest, buy the new one', '卖出最旧，买入新仓'),
         status: entryAction === 'rotate' ? 'active' : 'idle',
         tone: 'time',
@@ -149,7 +157,6 @@ export function evaluate(values, config) {
   const targetHit = tier ? pnlPercent >= tier.targetPercent : false;
   const exitAction = noContracts ? 'none' : stopped ? 'stop' : targetHit ? 'sell' : 'hold';
   const nextTier = tier ? ladder[tierIndex + 1] : null;
-  const range = (index) => `${index === 0 ? 0 : ladder[index - 1].upToMonths}–${ladder[index].upToMonths}`;
 
   const ladderRules = ladder.map((step, index) => {
     const current = !noContracts && index === tierIndex;
@@ -166,7 +173,7 @@ export function evaluate(values, config) {
     return {
       id: step.id,
       title: step.label,
-      when: t(`${range(index)} months`, `${range(index)} 个月`),
+      when: t(`Up to month ${step.upToMonths}`, `持有至第 ${step.upToMonths} 个月`),
       then: t(`Sell at +${step.targetPercent}%`, `盈利 +${step.targetPercent}% 时卖出`),
       status,
       note,
@@ -247,7 +254,7 @@ export function evaluate(values, config) {
       {
         id: 'hard-stop',
         title: t('Hard stop', '硬止损'),
-        when: t(`> ${stopMonths} months`, `超过 ${stopMonths} 个月`),
+        when: t(`After month ${stopMonths}`, `超过第 ${stopMonths} 个月`),
         then: t('Force sell, whatever the P&L', '无论盈亏强制卖出'),
         status: !noContracts && stopped ? 'active' : 'idle',
         tone: 'stop',

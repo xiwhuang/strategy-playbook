@@ -1,4 +1,4 @@
-import { clamp, describe, fmt, moveToday, passes, share, t } from '../kit.js';
+import { clamp, describe, dropPhrase, fmt, moveToday, passes, share, t } from '../kit.js';
 
 /**
  * LEAPS Engine model. Every threshold and size comes from `config.rules`.
@@ -29,14 +29,15 @@ export function evaluate(values, config) {
   const floorPercent = r.dip.cashAfterAdd.value;
   const floorAmount = share(total, floorPercent);
   const spec = t(
-    `Δ ${fmt(r.contract.delta)} calls, ${r.contract.dteMin}–${r.contract.dteMax} days to expiry`,
-    `Δ ${fmt(r.contract.delta)} 看涨期权，剩余 ${r.contract.dteMin}–${r.contract.dteMax} 天`,
+    `${fmt(r.contract.delta)}-delta calls with ${r.contract.dteMin}–${r.contract.dteMax} days to expiry`,
+    `${fmt(r.contract.delta)} Delta、剩余 ${r.contract.dteMin}–${r.contract.dteMax} 天的看涨期权`,
   );
 
   /* -- entry ---------------------------------------------------------------- */
   const drop = -move;
   const entrySignal = passes(drop, r.entry.drop);
-  const entryText = describe(`${U} drop`, r.entry.drop, '%');
+  const entryText = describe(`${U} drop`, r.entry.drop, '%'); // formula form, for the drawer
+  const entryPhrase = dropPhrase(U, r.entry.drop);
 
   /* -- management rules ----------------------------------------------------- */
   const harvest = passes(delta, r.harvest.delta);
@@ -52,9 +53,9 @@ export function evaluate(values, config) {
   const dipActive = dipTriggered && !dipBlocked;
   const renewCovered = renew && harvest;
 
-  const harvestText = describe('Δ', r.harvest.delta);
+  const harvestText = describe('Delta', r.harvest.delta);
   const renewText = describe('DTE', r.renew.dte);
-  const dipText = describe('Δ', r.dip.delta);
+  const dipText = describe('Delta', r.dip.delta);
   const heavyText = describe('cash', r.dip.heavyMode, '%');
 
   const blockReasons = [];
@@ -87,12 +88,15 @@ export function evaluate(values, config) {
       title: t('Opening the setup', '建立初始仓位'),
       summary: entrySignal
         ? t(`${moveText.en}, which meets the entry rule.`, `${moveText.zh}，满足建仓规则。`)
-        : t(`${moveText.en}. The setup waits for ${entryText}.`, `${moveText.zh}。建仓需等待 ${entryText}。`),
+        : t(
+            `${moveText.en}. The setup waits for a day with ${entryPhrase.en}.`,
+            `${moveText.zh}。建仓需等待${entryPhrase.zh}的交易日。`,
+          ),
       rules: [
         {
           id: 'enter',
           title: t('Open the setup', '建仓'),
-          when: entryText,
+          when: entryPhrase,
           then: t(
             `Put ${r.allocation.leapsPercent}% into LEAPS, keep ${r.allocation.cashPercent}% in cash`,
             `${r.allocation.leapsPercent}% 买入 LEAPS，保留 ${r.allocation.cashPercent}% 现金`,
@@ -104,7 +108,7 @@ export function evaluate(values, config) {
         {
           id: 'wait',
           title: t('Wait for a red day', '等待下跌日'),
-          when: t(`${U} not down enough`, `${U} 跌幅不足`),
+          when: dropPhrase(U, r.entry.drop, { negate: true }),
           then: t('Stay in cash', '保持现金'),
           status: entrySignal ? 'idle' : 'active',
           tone: 'hold',
@@ -130,7 +134,10 @@ export function evaluate(values, config) {
             actions: [
               {
                 title: t('Wait', '等待'),
-                body: t(`No entry today. The plan only opens on ${entryText}.`, `今天不建仓。计划只在 ${entryText} 时建仓。`),
+                body: t(
+                  `No entry today. The plan only opens on a day with ${entryPhrase.en}.`,
+                  `今天不建仓。计划只在${entryPhrase.zh}的交易日建仓。`,
+                ),
               },
             ],
           },
@@ -141,8 +148,8 @@ export function evaluate(values, config) {
       actions.push({
         title: t('Roll up and out', '向上并向后展期'),
         body: t(
-          `Sell the Δ ${fmt(delta)} call and buy a Δ ${fmt(r.harvest.rollToDelta)} call with more than ${r.harvest.rollToDteMin} days left. The net credit goes to the cash reserve.`,
-          `卖出 Δ ${fmt(delta)} 的看涨期权，买入 Δ ${fmt(r.harvest.rollToDelta)}、剩余超过 ${r.harvest.rollToDteMin} 天的新合约。净权利金转入现金储备。`,
+          `Sell the ${fmt(delta)}-delta call and buy a ${fmt(r.harvest.rollToDelta)}-delta call with more than ${r.harvest.rollToDteMin} days left. The net credit goes to the cash reserve.`,
+          `卖出 Delta ${fmt(delta)} 的看涨期权，买入 Delta ${fmt(r.harvest.rollToDelta)}、剩余超过 ${r.harvest.rollToDteMin} 天的新合约。净权利金转入现金储备。`,
         ),
       });
     }
@@ -191,6 +198,7 @@ export function evaluate(values, config) {
     lanes.push({
       id: 'manage',
       title: t('Managing the position', '管理仓位'),
+      // Several LEAPS? Check each one: any contract can trigger a rule.
       summary:
         activeCount === 0
           ? t('Nothing has triggered — the plan says hold.', '没有触发任何规则——计划要求继续持有。')
@@ -203,8 +211,8 @@ export function evaluate(values, config) {
           title: t('Harvest profit', '止盈收割'),
           when: harvestText,
           then: t(
-            `Roll up & out to Δ ${fmt(r.harvest.rollToDelta)}, > ${r.harvest.rollToDteMin} DTE (credit)`,
-            `展期至 Δ ${fmt(r.harvest.rollToDelta)}、> ${r.harvest.rollToDteMin} 天（收取权利金）`,
+            `Roll up & out to ${fmt(r.harvest.rollToDelta)} delta and ${r.harvest.rollToDteMin}+ days — you collect a credit`,
+            `展期至 Delta ${fmt(r.harvest.rollToDelta)}、${r.harvest.rollToDteMin} 天以上——收取权利金`,
           ),
           status: harvest ? 'active' : 'idle',
           tone: 'profit',
@@ -214,7 +222,10 @@ export function evaluate(values, config) {
           id: 'renew',
           title: t('Infinite renewal', '无限续杯'),
           when: renewText,
-          then: t(`Roll out to > ${r.renew.rollToDteMin} DTE (debit)`, `展期至 > ${r.renew.rollToDteMin} 天（支付差价）`),
+          then: t(
+            `Roll out to ${r.renew.rollToDteMin}+ days — you pay a debit`,
+            `展期至 ${r.renew.rollToDteMin} 天以上——需支付差价`,
+          ),
           status: renewCovered ? 'covered' : renew ? 'active' : 'idle',
           note: renewCovered ? t('The harvest roll already resets time.', '收割展期已同时延长了时间。') : null,
           tone: 'time',
@@ -236,7 +247,7 @@ export function evaluate(values, config) {
         {
           id: 'hold',
           title: t('Hold', '持有观望'),
-          when: t('No rule triggered', '未触发任何规则'),
+          when: t('No other rule applies', '没有其他规则适用'),
           then: t('Keep the position and the reserve', '保持仓位与现金储备'),
           status: activeCount === 0 ? 'active' : 'idle',
           tone: 'hold',
@@ -313,6 +324,8 @@ export function evaluate(values, config) {
       cooling,
       floorBreached,
     },
+
+    allocationTitle: t('Starting setup', '初始配置'),
 
     allocations: [
       {

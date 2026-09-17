@@ -79,12 +79,16 @@ export default {
     {
       id: 'risk',
       title: t('Check what you hold', '对照你的持仓'),
-      description: t('Enter your real weights to see drift and margin against the rules.', '填入真实占比，查看偏离与保证金是否符合规则。'),
-      columns: 4,
+      description: t(
+        'Enter your real weights; cash is whatever is left. The scenario below uses them.',
+        '填入真实占比，剩余部分即为现金。下方情景会用到这些数据。',
+      ),
+      columns: 3,
     },
   ],
 
-  layout: ['group:allocation', 'allocations', 'formulas', 'group:simulation', 'flow', 'group:risk', 'risk'],
+  // Holdings come before the scenario because the waterfall's cash refill uses them.
+  layout: ['group:allocation', 'allocations', 'formulas', 'group:risk', 'risk', 'group:simulation', 'flow'],
 
   inputs: [
     {
@@ -143,8 +147,8 @@ export default {
       label: t('Premium scenario', '权利金情景'),
       helper: t('Model the monthly premium as a rate or an amount', '按比例或按金额设定月度权利金'),
       options: [
-        { value: 'percent', label: t('Rate', '按比例') },
-        { value: 'dollar', label: t('Amount', '按金额') },
+        { value: 'percent', label: t('% of wheel', '按轮转比例') },
+        { value: 'dollar', label: t('$ amount', '按金额') },
       ],
     },
     {
@@ -175,7 +179,11 @@ export default {
       kind: 'range',
       group: 'simulation',
       label: t('LEAPS outcome', 'LEAPS 情景结果'),
-      helper: t('Hypothetical result on the premium deployed; −100% is a total loss', '投入权利金的假设结果；−100% 表示全部亏损'),
+      helper: (r) =>
+        t(
+          `Used once the LEAPS path opens (RSI ${r.waterfall.oversold.op === '<' ? 'below' : 'at or below'} ${r.waterfall.oversold.value}). −100% is a total loss`,
+          `LEAPS 路径开启后（RSI ${r.waterfall.oversold.op === '<' ? '低于' : '不高于'} ${r.waterfall.oversold.value}）才会用到。−100% 表示全部亏损`,
+        ),
       min: -100,
       max: 300,
       step: 5,
@@ -197,18 +205,7 @@ export default {
       kind: 'range',
       group: 'risk',
       label: t('Options held now', '当前期权仓位'),
-      helper: t('Your current options weight', '你当前的期权仓位占比'),
-      min: 0,
-      max: 100,
-      step: 0.5,
-      suffix: '%',
-    },
-    {
-      id: 'currentCashPercent',
-      kind: 'range',
-      group: 'risk',
-      label: t('Cash held now', '当前现金'),
-      helper: t('Compared with the strategy cash target', '用于与策略现金目标比较'),
+      helper: t('Cash held is the rest: 100% − core − options', '现金占比 = 100% − 核心 − 期权'),
       min: 0,
       max: 100,
       step: 0.5,
@@ -242,7 +239,6 @@ export default {
     leapsReturn: 0,
     currentCorePercent: 55,
     currentOptionsPercent: 42,
-    currentCashPercent: 3,
     marginUsage: 0,
   },
 

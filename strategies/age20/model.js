@@ -1,4 +1,4 @@
-import { clamp, describe, fmt, passes, share, t } from '../kit.js';
+import { clamp, describe, fmt, passes, share, t, usd } from '../kit.js';
 
 /**
  * Age + 20 model. Reads every rule from `config.rules`:
@@ -29,7 +29,8 @@ export function evaluate(values, config) {
   const leapsReturn = clamp(values.leapsReturn, -100, 300);
   const currentCorePercent = clamp(values.currentCorePercent, 0, 100);
   const currentOptionsPercent = clamp(values.currentOptionsPercent, 0, 100);
-  const currentCashPercent = clamp(values.currentCashPercent, 0, 100);
+  // Cash held is whatever core and options leave, so the three always add up.
+  const currentCashPercent = clamp(100 - currentCorePercent - currentOptionsPercent, 0, 100);
   const marginUsage = clamp(values.marginUsage, 0, r.margin.max);
 
   /* -- 2. Primary allocation ---------------------------------------------- */
@@ -223,14 +224,6 @@ export function evaluate(values, config) {
         amount: cashTarget,
         tone: 'cash',
         items: [],
-        meter: {
-          label: t('Held now vs. target', '当前现金 vs 目标'),
-          current: currentCash,
-          target: cashTarget,
-          status: currentCash >= cashTarget ? t('Target funded', '现金目标已满足') : t('Short of target', '低于目标'),
-          shortfall: cashShortfall,
-          shortfallLabel: t('Shortfall', '缺口'),
-        },
         callout: t(
           'A liquidity buffer for the whole portfolio — not idle options buying power.',
           '这是整个组合的流动性缓冲，而不是闲置的期权购买力。',
@@ -263,7 +256,7 @@ export function evaluate(values, config) {
       {
         id: 'rsi',
         bucket: null,
-        label: oversold ? t('Oversold condition', '超卖条件') : t('Wait', '等待'),
+        label: t('RSI check', 'RSI 条件判断'),
         detail: oversold
           ? t(`RSI ${rsi.toFixed(0)} — ${oversoldText}, so the LEAPS path opens`, `RSI ${rsi.toFixed(0)}——满足 ${oversoldText}，开启 LEAPS 路径`)
           : t(`RSI ${rsi.toFixed(0)} — the premium stays in reserve`, `RSI ${rsi.toFixed(0)}——权利金继续留在储备中`),
@@ -287,8 +280,11 @@ export function evaluate(values, config) {
         label: t('Refill cash', '补足现金仓位'),
         detail:
           cashShortfall > 0
-            ? t('Close the gap to the cash target first', '先补足与现金目标之间的缺口')
-            : t('No shortfall — proceeds skip straight to core', '没有缺口——资金直接流向核心仓位'),
+            ? t(
+                `Cash is ${usd(currentCash)} against a ${usd(cashTarget)} target — close that gap first`,
+                `现金为 ${usd(currentCash)}，目标 ${usd(cashTarget)}——先补足缺口`,
+              )
+            : t('Cash is at target — proceeds skip straight to core', '现金已达标——资金直接流向核心仓位'),
         amount: oversold ? cashRefill : null,
         status: oversold && cashRefill > 0 ? 'ready' : oversold ? 'active' : 'idle',
       },
@@ -325,6 +321,13 @@ export function evaluate(values, config) {
 
     drift: {
       sumPercent: currentSumPercent,
+      warning:
+        currentCorePercent + currentOptionsPercent > 100
+          ? t(
+              'Core and options add up to more than 100%, which leaves no cash. Lower one of them.',
+              '核心与期权合计超过 100%，没有剩余现金。请调低其中一项。',
+            )
+          : null,
       tolerance: r.driftTolerance,
       rows: driftRows,
     },

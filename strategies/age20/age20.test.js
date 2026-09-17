@@ -74,20 +74,21 @@ test('the premium scenario accepts a rate or a dollar amount', () => {
 });
 
 test('proceeds fill the cash shortfall before anything reaches core', () => {
-  const result = evaluate({ rsi: 30, currentCashPercent: 4.5, premiumRate: 10, leapsReturn: 100 });
+  // core 55% + options 40.5% leaves 4.5% cash
+  const result = evaluate({ rsi: 30, currentCorePercent: 55, currentOptionsPercent: 40.5, premiumRate: 10, leapsReturn: 100 });
 
   assert.equal(result.metrics.cashShortfall, 2000);
   assert.equal(result.metrics.cashRefill, 2000);
   assert.equal(result.metrics.coreSpillover, result.metrics.leapsProceeds - 2000);
 
   // With cash already funded there is no refill leg at all.
-  const funded = evaluate({ rsi: 30, currentCashPercent: 8, premiumRate: 10, leapsReturn: 100 });
+  const funded = evaluate({ rsi: 30, currentCorePercent: 55, currentOptionsPercent: 37, premiumRate: 10, leapsReturn: 100 });
   assert.equal(funded.metrics.cashRefill, 0);
   assert.equal(funded.metrics.coreSpillover, funded.metrics.leapsProceeds);
 });
 
 test('core spillover keeps the 30 / 30 / 40 mix and lifts the concentration cap', () => {
-  const result = evaluate({ rsi: 30, currentCashPercent: 5, premiumRate: 10, leapsReturn: 100 });
+  const result = evaluate({ rsi: 30, currentCorePercent: 55, currentOptionsPercent: 40, premiumRate: 10, leapsReturn: 100 });
   const spillover = result.metrics.coreSpillover;
   const step = result.flow.find((item) => item.id === 'core');
 
@@ -121,7 +122,7 @@ test('margin tone changes at exactly 20% and 25%', () => {
 });
 
 test('drift compares current weights with the targets', () => {
-  const result = evaluate({ currentCorePercent: 50, currentOptionsPercent: 45, currentCashPercent: 5 });
+  const result = evaluate({ currentCorePercent: 50, currentOptionsPercent: 45 });
   const [core, options, cash] = result.drift.rows;
 
   assert.equal(core.status, 'under'); // 50% against a 58% target
@@ -131,7 +132,7 @@ test('drift compares current weights with the targets', () => {
   assert.equal(result.drift.sumPercent, 100);
 
   // Inside the tolerance band both directions read as "on target".
-  const near = evaluate({ currentCorePercent: 58.5, currentOptionsPercent: 36.5, currentCashPercent: 5 });
+  const near = evaluate({ currentCorePercent: 58.5, currentOptionsPercent: 36.5 });
   assert.equal(near.drift.rows[0].status, 'on');
   assert.equal(near.drift.rows[1].status, 'on');
 });
@@ -189,4 +190,20 @@ test('changing a rule in config changes the model — no number is hard-coded', 
 
   // The original is untouched.
   assert.equal(age20Strategy.evaluate({ age: 38 }).metrics.corePercent, 58);
+});
+
+test('cash held is derived from core and options, so the three always add up', () => {
+  const result = evaluate({ currentCorePercent: 60, currentOptionsPercent: 30 });
+  assert.equal(result.metrics.currentCash, 400000 * 0.1);
+  assert.equal(result.drift.sumPercent, 100);
+  assert.equal(result.drift.warning, null);
+
+  const over = evaluate({ currentCorePercent: 70, currentOptionsPercent: 40 });
+  assert.equal(over.metrics.currentCash, 0);
+  assert.match(over.drift.warning.en, /more than 100%/);
+});
+
+test('holdings come before the scenario that depends on them', () => {
+  const { layout } = age20Strategy;
+  assert.ok(layout.indexOf('group:risk') < layout.indexOf('flow'));
 });
