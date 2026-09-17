@@ -98,20 +98,6 @@ const UI = {
   driftSum: { en: 'Your three weights add up to', zh: '你填写的三项合计为' },
   driftSumHint: { en: 'Adjust them until they total 100%.', zh: '请调整至合计 100%。' },
 
-  disclaimerTitle: { en: 'Educational use only', zh: '仅供教育使用' },
-  disclaimer: {
-    en: 'This dashboard is an educational visualization of a portfolio-management framework. It does not provide investment, tax, legal, or brokerage advice. Options and margin can produce losses exceeding the initial amount committed. Illustrative returns are not forecasts or guarantees.',
-    zh: '本仪表板仅用于展示一种仓位管理框架，不构成投资、税务、法律或券商建议。期权与保证金交易可能造成重大损失，部分情况下损失可能超过初始投入。所有收益情景仅为演示，不代表预测或保证。',
-  },
-  inspiredBy: {
-    en: 'Unofficial educational visualization of a publicly presented strategy framework.',
-    zh: '非官方教育可视化，基于一套公开讲解的策略框架。',
-  },
-  // Required by the font's CC BY-NC licence — see fonts/README.md.
-  fontCredit: {
-    en: 'Handwriting font: xkcd Script, from the handwriting of Randall Munroe',
-    zh: '手写字体：xkcd Script，来自 Randall Munroe 的手写字体',
-  },
   srSummary: { en: 'Allocation summary', zh: '配置摘要' },
   skipLink: { en: 'Skip to the strategy workspace', zh: '跳到策略工作区' },
 };
@@ -1198,26 +1184,7 @@ function renderShell() {
       </section>
 
       ${renderSteps(strategy, evaluation)}
-
-      <section class="disclaimer" aria-labelledby="disclaimer-title">
-        <h2 class="hand" id="disclaimer-title">${ui('disclaimerTitle')}</h2>
-        <p>${ui('disclaimer')}</p>
-      </section>
     </main>
-
-    <footer class="site-footer">
-      <p>${ui('inspiredBy')}${
-        strategy.source
-          ? ` <a class="link-sketch" href="${escapeHtml(strategy.source.url)}" target="_blank" rel="noreferrer noopener">${text(
-              strategy.source.label,
-            )}<span aria-hidden="true"> ↗</span></a>`
-          : ''
-      }</p>
-      <p class="footer-credit">${ui('fontCredit')} ·
-        <a class="link-plain" href="https://github.com/ipython/xkcd-font" target="_blank" rel="noreferrer noopener">xkcd-font</a> ·
-        <a class="link-plain" href="https://creativecommons.org/licenses/by-nc/3.0/" target="_blank" rel="noreferrer noopener">CC BY-NC 3.0</a>
-      </p>
-    </footer>
 
     <div class="toast-slot" aria-live="polite">${
       state.toast ? `<p class="toast">${escapeHtml(state.toast)}</p>` : ''
@@ -1364,7 +1331,7 @@ function copyOrShow(value, successMessage) {
   });
 }
 
-/** Plain-text scenario summary, disclaimer included. */
+/** Plain-text scenario summary with a link back to the same scenario. */
 function buildSummary() {
   const strategy = currentStrategy();
   const evaluation = strategy.evaluate(state.values);
@@ -1430,7 +1397,6 @@ function buildSummary() {
   }
 
   lines.push('');
-  lines.push(localize(UI.disclaimer));
   lines.push(scenarioUrl());
   return lines.join('\n');
 }

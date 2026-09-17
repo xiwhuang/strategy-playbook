@@ -121,9 +121,9 @@ The page builds itself from the descriptor:
   and inputs, so *Share link* shares exactly what is on screen.
 - **Privacy.** Values are stored only if you tick *Remember my values on this
   device*. Language and theme preferences are stored.
-- **Copy summary** produces plain text of the scenario, verdicts and
-  disclaimer. If the browser blocks the clipboard, the text is shown to copy by
-  hand.
+- **Copy summary** produces plain text of the scenario and its verdicts, with
+  a link back to it. If the browser blocks the clipboard, the text is shown to
+  copy by hand.
 - **Accessibility.** Visible labels on every control, keyboard access to the
   chart through its legend, focus kept across updates, no colour-only states,
   and `prefers-reduced-motion` respected.
@@ -136,8 +136,12 @@ handwriting, self-hosted in `fonts/` (see `fonts/README.md`). It is licensed
 
 - **NonCommercial** — this site must stay non-commercial. If that changes,
   swap `--font-hand` in `styles.css` for a differently licensed face.
-- **Attribution** — the credit in the page footer satisfies the licence and
-  must stay while the font is used.
+- **Attribution** — the page shows no credit line. The credit travels with the
+  published files instead: `fonts/README.md` and `fonts/LICENSE` (served under
+  `/fonts/`), the `@font-face` comment in `styles.css`, and the comment and
+  `font-credit` meta tag in `index.html`. Keep those while the font is used. A
+  licence that needs no attribution at all would mean swapping to an
+  OFL-licensed handwriting face.
 
 It has no CJK glyphs, so Chinese headings fall back to Kaiti. Body text uses
 Nunito and figures use JetBrains Mono (Google Fonts), with local fallbacks.

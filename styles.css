@@ -395,13 +395,7 @@ summary {
   text-underline-offset: 4px;
 }
 
-.link-plain {
-  color: var(--graphite);
-  text-underline-offset: 2px;
-}
-
-.link-sketch:hover,
-.link-plain:hover {
+.link-sketch:hover {
   color: var(--ink);
 }
 
@@ -523,7 +517,8 @@ summary {
   gap: var(--space-12);
   width: var(--page);
   margin: 0 auto;
-  padding: var(--space-6) 0 var(--space-8);
+  /* the page ends on content, so leave room above a phone's home bar */
+  padding: var(--space-6) 0 max(var(--space-12), calc(env(safe-area-inset-bottom) + var(--space-6)));
 }
 
 .intro {
@@ -1791,39 +1786,7 @@ summary {
   color: var(--ink);
 }
 
-/* --------------------------------------------------------- footer & misc */
-
-.disclaimer {
-  display: grid;
-  gap: var(--space-2);
-  padding-left: var(--space-4);
-  border-left: 3px solid var(--graphite-soft);
-}
-
-.disclaimer h2 {
-  font-size: var(--text-lg);
-}
-
-.disclaimer p {
-  max-width: 80ch;
-  color: var(--graphite);
-  font-size: var(--text-sm);
-}
-
-.site-footer {
-  display: grid;
-  gap: var(--space-1);
-  width: var(--page);
-  margin: 0 auto;
-  padding: var(--space-4) 0 max(var(--space-8), env(safe-area-inset-bottom));
-  border-top: var(--line-dashed);
-  color: var(--graphite);
-  font-size: var(--text-xs);
-}
-
-.footer-credit {
-  margin-top: var(--space-1);
-}
+/* ------------------------------------------------------------------ misc */
 
 .copy-dialog {
   width: min(560px, calc(100% - var(--space-8)));
